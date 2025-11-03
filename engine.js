@@ -4,6 +4,7 @@ var Engine = {
         console.log("Magenta level checked".magenta)
         console.log("Engine Ready !")
         console.log("Blue level checked".blue)
+        console.log("Cyan level checked".cyan)
         return true
     },
     start: function () {
