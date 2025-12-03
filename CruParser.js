@@ -1,4 +1,5 @@
 var { Course, Slot } = require('./course');
+var iCalendar = require('./icalendar.js');
 
 // CruParser
 
@@ -468,20 +469,84 @@ CruParser.prototype.getOccupancyStats = function () {
 	for (var i = 0; i < allRooms.length; i++) {
 		var room = allRooms[i];
 		var maxCapacity = this.getRoomMaxCapacity(room);
-		var slots = this.getRoomSlots(room);
-		var totalSlots = slots.length;
+		var roomSlots = this.getRoomSlots(room);
+		var totalSlots = roomSlots.length;
+		
+		// Calculate total student capacity across all courses in this room
+		var totalStudentCapacity = 0;
+		for (var j = 0; j < roomSlots.length; j++) {
+			totalStudentCapacity += roomSlots[j].slot.capacity;
+		}
+		
+		// Occupancy rate: (total student capacity) / (max room capacity * number of slots) * 100
+		// This shows what percentage of the room's total available capacity is being used
+		var occupancyRate = 0;
+		if (maxCapacity > 0 && totalSlots > 0) {
+			occupancyRate = ((totalStudentCapacity / (maxCapacity * totalSlots)) * 100).toFixed(2);
+		}
 		
 		stats.push({
 			room: room,
 			maxCapacity: maxCapacity,
 			totalSlots: totalSlots,
-			occupancyRate: totalSlots > 0 ? ((totalSlots / 5) * 100).toFixed(2) : 0 // Assuming 5 slots per room per week
+			totalStudentCapacity: totalStudentCapacity,
+			occupancyRate: occupancyRate
 		});
 	}
 	
 	return stats.sort(function(a, b) {
 		return b.maxCapacity - a.maxCapacity;
 	});
+}
+
+CruParser.prototype.exportToICS = function (startDateStr, endDateStr) {
+	var startDate = new Date(startDateStr);
+	var endDate = new Date(endDateStr);
+	
+	var ics = 'BEGIN:VCALENDAR\r\n';
+	ics += 'VERSION:2.0\r\n';
+
+	var eventCount = 0;
+	
+	for (var i = 0; i < this.parsedCourse.length; i++) {
+		var course = this.parsedCourse[i];
+		
+		for (var j = 0; j < course.slots.length; j++) {
+			var slot = course.slots[j];
+
+			var datesForDay = iCalendar.getDatesForDay(slot.day, startDate, endDate);
+			
+			for (var k = 0; k < datesForDay.length; k++) {
+				var eventDate = datesForDay[k];
+				
+				ics += 'BEGIN:VEVENT\r\n';
+				ics += 'UID:' + iCalendar.generateUID(course.name, slot, eventDate) + '\r\n';
+				ics += 'DTSTAMP:' + iCalendar.formatICSDateTime(new Date(), '00:00') + '\r\n';
+				ics += 'DTSTART:' + iCalendar.formatICSDateTime(eventDate, slot.start) + '\r\n';
+				ics += 'DTEND:' + iCalendar.formatICSDateTime(eventDate, slot.end) + '\r\n';
+				ics += 'SUMMARY:' + iCalendar.escapeICSText(course.name) + ' (' + iCalendar.escapeICSText(slot.type) + ')\r\n';
+				
+				if (slot.room) {
+					ics += 'LOCATION:' + iCalendar.escapeICSText(slot.room) + '\r\n';
+				}
+				
+				ics += 'END:VEVENT\r\n';
+				eventCount++;
+			}
+		}
+	}
+
+	if (eventCount === 0) {
+		ics += 'BEGIN:VEVENT\r\n';
+		ics += 'UID:empty-event\r\n';
+		ics += 'DTSTAMP:' + iCalendar.formatICSDateTime(new Date(), '00:00') + '\r\n';
+		ics += 'DTSTART:' + iCalendar.formatICSDateTime(new Date(), '00:00') + '\r\n';
+		ics += 'DTEND:' + iCalendar.formatICSDateTime(new Date(), '00:00') + '\r\n';
+		ics += 'SUMMARY:No events available\r\n';
+		ics += 'END:VEVENT\r\n';
+	}
+	
+	return ics += 'END:VCALENDAR\r\n';
 }
 
 

@@ -4,7 +4,8 @@
   "description": "Offer an interface for a recursive descent parser implemented in Javascript for reading and processing the CRU file format.",
   "main": "caporalCli.js",
   "scripts": {
-    "test": "jasmine"
+    "test": "jasmine",
+    "cli": "node caporalCli.js"
   },
   "keywords": [],
   "authors": [

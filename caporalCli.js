@@ -140,5 +140,120 @@ cli
 		});
 	})
 
+
+	// export
+	.command('export', 'Export parsed Cru file to iCalendar .ics format')
+	.argument('<file>', 'The Cru file to export')
+	.argument('<output>', 'The output .ics file')
+	.option('-sd, --startDate <startDate>', 'The start date of the semester in YYYY-MM-DD format', { default: '2025-12-08' })
+	.option('-ed, --endDate <endDate>', 'The end date of the semester in YYYY-MM-DD format', { default: '2025-12-13' })
+	.action(({ args, options, logger }) => {
+		fs.readFile(args.file, 'utf8', function (err, data) {
+			if (err) {
+				return logger.warn(err);
+			}
+			
+			var analyzer = new CruParser();
+			analyzer.parse(data);
+			
+			if (analyzer.errorCount === 0) {
+				const icsData = analyzer.exportToICS(options.startDate, options.endDate);
+				fs.writeFile(args.output, icsData, (err) => {
+					if (err) {
+						return logger.warn(err);
+					}
+					logger.info(`Exported to ${args.output}`.green);
+				});
+			} else {
+				logger.info("The .cru file contains error".red);
+			}
+		});
+	})
+
+
+	// visualize-occupancy
+	.command('stats', 'Visualize room occupancy rates as SVG')
+	.argument('<file>', 'The Cru file to analyze')
+	.argument('<output>', 'The output .svg file')
+	.action(({ args, options, logger }) => {
+		
+		fs.readFile(args.file, 'utf8', function (err, data) {
+			if (err) {
+				return logger.warn(err);
+			}
+			
+			var analyzer = new CruParser();
+			analyzer.parse(data);
+			
+			if (analyzer.errorCount === 0) {
+				const occupancyData = analyzer.getOccupancyStats();
+				
+				const spec = {
+					$schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+					title: 'Taux d\'occupation des salles',
+					description: 'Visualisation du taux d\'occupation des salles sur la période choisie',
+					width: 1600,
+					height: 800,
+					data: { values: occupancyData },
+					mark: 'bar',
+					encoding: {
+						x: {
+							field: 'room',
+							type: 'nominal',
+							title: 'Salle',
+							axis: { labelAngle: -45 }
+						},
+						y: {
+							field: 'occupancyRate',
+							type: 'quantitative',
+							title: 'Taux d\'occupation (%)',
+							scale: { domain: [0, 100] }
+						},
+						color: {
+							field: 'occupancyRate',
+							type: 'quantitative',
+							scale: {
+								scheme: 'redyellowgreen',
+								domain: [0, 50, 100]
+							},
+							title: 'Taux (%)'
+						},
+						tooltip: [
+							{ field: 'room', type: 'nominal', title: 'Salle' },
+							{ field: 'occupancyRate', type: 'quantitative', title: 'Taux d\'occupation (%)', format: '.2f' },
+							{ field: 'totalSlots', type: 'quantitative', title: 'Créneaux' },
+							{ field: 'maxCapacity', type: 'quantitative', title: 'Capacité max' }
+						]
+					}
+				};
+				
+				try {
+					const vegaSpec = vegalite.compile(spec).spec;
+					
+					const view = new vg.View(vg.parse(vegaSpec), {
+						loader: vg.loader(),
+						renderer: 'svg'
+					});
+					
+					view.runAsync().then(() => view.toSVG()).then(svg => {
+						fs.writeFile(args.output, svg, (err) => {
+							if (err) {
+								return logger.warn(err);
+							}
+							logger.info(`Room occupancy visualization exported to ${args.output}`.green);
+							logger.info(`Occupancy data: ${occupancyData.length} rooms analyzed`.cyan);
+						});
+					}).catch(err => {
+						logger.warn(`Error rendering visualization: ${err}`);
+					});
+				} catch (err) {
+					logger.warn(`Error compiling specification: ${err}`);
+				}
+			} else {
+				logger.info("The .cru file contains error".red);
+			}
+		});
+	});
+
 	
 cli.run(process.argv.slice(2));
