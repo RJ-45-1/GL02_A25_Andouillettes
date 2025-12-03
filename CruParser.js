@@ -26,7 +26,7 @@ fs.readFile(('./data/AB/edt.cru'), 'utf8', function (err,data) {
 var CruParser = function(sTokenize, sParsedSymbols){
 	// The list of course parsed from the input file.
 	this.parsedCourse = [];
-    this.symb = ["+","P=","H=","S=","//", "/"];
+    this.symb = ["+","//"];
 	this.showTokenize = sTokenize; // true to show the tokenized data
     this.showParsedSymbols = sParsedSymbols; // true to show parsed symbols during the parsing
 	this.errorCount = 0;
@@ -39,10 +39,10 @@ CruParser.prototype.tokenize = function(data){
 	var separator = /\/\/|\+|P=|H=|S=|[A-Za-z0-9:]+/g;
 	data = data.match(separator);
 	const tokens = []
-	/* for (let i = 0; i < data.length; i++) {
+	for (let i = 0; i < data.length; i++) {
 		if (data[i] === "P=" || data[i] === "H=" || data[i] === "S=") continue; // retirer les P=, H=, S=
 		tokens.push(data[i]);
-	} */
+	}
 	
 	return tokens;
 }
@@ -112,20 +112,19 @@ CruParser.prototype.expect = function(s, input){
 
 // Parser rules
 
-// <liste_poi> = *(<poi>) "$$"
+// Emploi = 1*CoursData
 CruParser.prototype.listCourse = function(input){
 	this.course(input);
-	this.expect("$$", input);
+	this.expect("", input); // fin de l'emploi ???
 }
 
 // <poi> = "START_POI" <eol> <body> "END_POI"
 CruParser.prototype.course = function(input){
 
 	if(this.check("+", input)){
-		this.expect("+", input);
 		var args = this.body(input);
 		var p = new Course(args.nm, args.sl);
-		this.expect("//",input);
+		this.expect("+",input);
 		this.parsedCourse.push(p);
 		if(input.length > 0){
 			this.course(input);
@@ -159,29 +158,16 @@ CruParser.prototype.name = function(input){
 CruParser.prototype.slot = function(input){
 	this.expect("1",input); // slots start with 1
 	var curS = this.next(input);
-	if(matched = curS.match(/(-?\d+(\.\d+)?);(-?\d+(\.\d+)?)/)){ 
-		return { lat: matched[1], lng: matched[3] };
+	console.log(curS);
+	if(matched = curS.match(/[0-9]+,[A-Za-z0-9]+,P=[0-9]+,H=[A-Za-z]+ [0-9:]+-[0-9:]+,F[0-9]+,S=[A-Za-z0-9]+/)){
+		return { type: matched[1], capacity: matched[3], day: matched[5], start: matched[7], end: matched[9], subgroup: matched[11], room: matched[13] };
+	
 	}else{
-		this.errMsg("Invalid latlng", input);
+		this.errMsg("Invalid slot", input);
 	}
 }
 
-// <optional> = *(<note>)
-// <note> = "note: " "0"/"1"/"2"/"3"/"4"/"5"
-CruParser.prototype.note = function (input, curPoi){
-	if(this.check("note", input)){
-		this.expect("note", input);
-		var curS = this.next(input);
-		if(matched = curS.match(/[0-5]/)){
-			curPoi.addRating(matched[0]);
-			if(input.length > 0){
-				this.note(input, curPoi);
-			}
-		}else{
-			this.errMsg("Invalid note");
-		}	
-	}
-}
+
 
 
 module.exports = CruParser;
