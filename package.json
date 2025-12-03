@@ -1,13 +1,17 @@
 {
   "name": "cru-parser-cli",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Offer an interface for a recursive descent parser implemented in Javascript for reading and processing the CRU file format.",
   "main": "caporalCli.js",
   "scripts": {
     "test": "jasmine"
   },
   "keywords": [],
-  "author": "andouilettes",
+  "authors": [
+    "Alec BASSET <alec.basset@utt.fr>",
+    "Antoine NERET <antoine.neret@utt.fr>",
+    "Lancelot ROGER <lancelot.roger@utt.fr>"
+  ],
   "dependencies": {
     "@caporal/core": "^3.0.2",
     "colors": "^1.4.0",
