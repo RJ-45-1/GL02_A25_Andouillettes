@@ -1,6 +1,7 @@
 const fs = require('fs');
 const colors = require('colors');
 const CruParser = require('./CruParser.js');
+const packageJson = require('./package.json');
 
 const vg = require('vega');
 const vegalite = require('vega-lite');
@@ -8,218 +9,251 @@ const vegalite = require('vega-lite');
 const cli = require("@caporal/core").default;
 
 cli
-	.version('vpf-parser-cli')
-	.version('0.07')
-	// check Vpf
-	.command('check', 'Check if <file> is a valid Vpf file')
-	.argument('<file>', 'The file to check with Vpf parser')
-	.option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator : cli.BOOLEAN, default: false })
+	.version('cru-parser-cli v' + packageJson.version)
+
+
+	// check
+	.command('check', 'Check if <file> or <folder> is a valid Cru file or folder of Cru files')
+	.argument('<path>', 'The file or folder to check with Cru parser')
+	.option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator: cli.BOOLEAN, default: false })
 	.option('-t, --showTokenize', 'log the tokenization results', { validator: cli.BOOLEAN, default: false })
-	.action(({args, options, logger}) => {
+	.action(({ args, options, logger }) => {
+		const path = args.path;
 		
-		fs.readFile(args.file, 'utf8', function (err,data) {
+		fs.stat(path, (err, stats) => {
 			if (err) {
 				return logger.warn(err);
 			}
-	  
-			var analyzer = new VpfParser(options.showTokenize, options.showSymbols);
-			analyzer.parse(data);
-			
-			if(analyzer.errorCount === 0){
-				logger.info("The .vpf file is a valid vpf file".green);
-			}else{
-				logger.info("The .vpf file contains error".red);
-			}
-			
-			logger.debug(analyzer.parsedCourse);
 
+			if (stats.isDirectory()) {
+				// Process folder: find all .cru files recursively
+				const getAllCruFiles = (dir) => {
+					let files = [];
+					const items = fs.readdirSync(dir);
+					
+					items.forEach(item => {
+						const itemPath = require('path').join(dir, item);
+						const itemStats = fs.statSync(itemPath);
+						
+						if (itemStats.isDirectory()) {
+							files = files.concat(getAllCruFiles(itemPath));
+						} else if (item.endsWith('.cru')) {
+							files.push(itemPath);
+						}
+					});
+					
+					return files;
+				};
+
+				const cruFiles = getAllCruFiles(path);
+				
+				if (cruFiles.length === 0) {
+					logger.warn('No .cru files found in the folder');
+					return;
+				}
+
+				let validCount = 0;
+				let errorCount = 0;
+
+				cruFiles.forEach(file => {
+					fs.readFile(file, 'utf8', function (err, data) {
+						if (err) {
+							logger.warn(`Error reading ${file}: ${err}`);
+							errorCount++;
+							return;
+						}
+
+						var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+						analyzer.parse(data);
+
+						if (analyzer.errorCount === 0) {
+							logger.info(`${file}`.green);
+							validCount++;
+						} else {
+							logger.info(`${file} (${analyzer.errorCount} errors)`.red);
+							errorCount++;
+						}
+					});
+				});
+
+				setTimeout(() => {
+					logger.info(`\nResults: ${validCount} valid, ${errorCount} with errors`.cyan);
+				}, 100);
+
+			} else {
+				// Process single file
+				fs.readFile(path, 'utf8', function (err, data) {
+					if (err) {
+						return logger.warn(err);
+					}
+
+					var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+					analyzer.parse(data);
+
+					if (analyzer.errorCount === 0) {
+						logger.info("The .cru file is a valid cru file".green);
+					} else {
+						logger.info("The .cru file contains error".red);
+					}
+
+					logger.debug(analyzer.parsedCourse);
+				});
+			}
 		});
-			
 	})
-	
+
+
 	// readme
-	.command('readme', 'Display the README.txt file')
-	.action(({args, options, logger}) => {
-		fs.readFile("./README.txt", 'utf8', function(err, data){
-			if(err){
+	.command('readme', 'Display the README.md file')
+	.action(({ args, options, logger }) => {
+		fs.readFile("./README.md", 'utf8', function (err, data) {
+			if (err) {
+				return logger.warn(err);
+			}
+
+			logger.info(data);
+		});
+
+	})
+
+
+	// search
+	.command('search', 'Free text search on Courses\' name')
+	.argument('<file>', 'The Cru file to search')
+	.argument('<needle>', 'The text to look for in Courses\' names')
+	.action(({ args, options, logger }) => {
+		fs.readFile(args.file, 'utf8', function (err, data) {
+			if (err) {
+				return logger.warn(err);
+			}
+
+			analyzer = new VpfParser();
+			analyzer.parse(data);
+
+			if (analyzer.errorCount === 0) {
+				var filtered = analyzer.parsedCourse.filter(p => p.name.includes(args.needle));
+				logger.info("%s", JSON.stringify(filtered, null, 2));
+
+			} else {
+				logger.info("The .cru file contains error".red);
+			}
+		});
+	})
+
+
+	// export
+	.command('export', 'Export parsed Cru file to iCalendar .ics format')
+	.argument('<file>', 'The Cru file to export')
+	.argument('<output>', 'The output .ics file')
+	.option('-sd, --startDate <startDate>', 'The start date of the semester in YYYY-MM-DD format', { default: '2025-12-08' })
+	.option('-ed, --endDate <endDate>', 'The end date of the semester in YYYY-MM-DD format', { default: '2025-12-13' })
+	.action(({ args, options, logger }) => {
+		fs.readFile(args.file, 'utf8', function (err, data) {
+			if (err) {
 				return logger.warn(err);
 			}
 			
-			logger.info(data);
-		});
-		
-	})
-	
-	// search
-	.command('search', 'Free text search on POIs\' name')
-	.argument('<file>', 'The Vpf file to search')
-	.argument('<needle>', 'The text to look for in POI\'s names')
-	.action(({args, options, logger}) => {
-		fs.readFile(args.file, 'utf8', function (err,data) {
-		if (err) {
-			return logger.warn(err);
-		}
-  
-		analyzer = new VpfParser();
-		analyzer.parse(data);
-		
-		if(analyzer.errorCount === 0){
-			var n = new RegExp(args.needle);
-			var filtered = analyzer.parsedPOI.filter( p => p.name.match(n, 'i'));
-			logger.info("%s", JSON.stringify(filtered, null, 2));
+			var analyzer = new CruParser();
+			analyzer.parse(data);
 			
-		}else{
-			logger.info("The .vpf file contains error".red);
-		}
-		
+			if (analyzer.errorCount === 0) {
+				const icsData = analyzer.exportToICS(options.startDate, options.endDate);
+				fs.writeFile(args.output, icsData, (err) => {
+					if (err) {
+						return logger.warn(err);
+					}
+					logger.info(`Exported to ${args.output}`.green);
+				});
+			} else {
+				logger.info("The .cru file contains error".red);
+			}
 		});
 	})
 
-	// average
-	.command('average', 'Compute the average note of each POI')
-	.alias('avg')
-	.argument('<file>', 'The Vpf file to use')
-	.action(({args, options, logger}) => {
-		fs.readFile(args.file, 'utf8', function (err,data) {
-		if (err) {
-			return logger.warn(err);
-		}
-  
-		analyzer = new VpfParser();
-		analyzer.parse(data);
-		
-		if(analyzer.errorCount === 0){
 
-			var avg = analyzer.parsedPOI.map(p => {
-				var m = 0	
-				// compute the average for each POI
-				if(p.ratings.length > 0){
-					m = p.ratings.reduce((acc, elt) => acc + parseInt(elt), 0) / p.ratings.length;
-				}
-				p["averageRatings"] = m;
-				return p;
-			})
-			logger.info("%s", JSON.stringify(avg, null, 2));
-			
-		}else{
-			logger.info("The .vpf file contains error".red);
-		}
+	// visualize-occupancy
+	.command('stats', 'Visualize room occupancy rates as SVG')
+	.argument('<file>', 'The Cru file to analyze')
+	.argument('<output>', 'The output .svg file')
+	.action(({ args, options, logger }) => {
 		
-		});
-	})	
-	
-	// average with chart
-	.command('averageChart', 'Compute the average note of each POI and export a Vega-lite chart')
-	.alias('avgChart')
-	.argument('<file>', 'The Vpf file to use')
-	.action(({args, options, logger}) => {
-		fs.readFile(args.file, 'utf8', function (err,data) {
-		if (err) {
-			return logger.warn(err);
-		}
-  
-		analyzer = new VpfParser();
-		analyzer.parse(data);
-		
-		if(analyzer.errorCount === 0){
-
-			var avg = analyzer.parsedPOI.map(p => {
-				var m = 0	
-				// compute the average for each POI
-				if(p.ratings.length > 0){
-					m = p.ratings.reduce((acc, elt) => acc + parseInt(elt), 0) / p.ratings.length;
-				}
-				p["averageRatings"] = m;
-				return p;
-			})
-			
-			var avgChart = {
-				//"width": 320,
-				//"height": 460,
-				"data" : {
-						"values" : avg
-				},
-				"mark" : "bar",
-				"encoding" : {
-					"x" : {"field" : "name", "type" : "nominal",
-							"axis" : {"title" : "Restaurants' name."}
-						},
-					"y" : {"field" : "averageRatings", "type" : "quantitative",
-							"axis" : {"title" : "Average ratings for "+args.file+"."}
-						}
-				}
+		fs.readFile(args.file, 'utf8', function (err, data) {
+			if (err) {
+				return logger.warn(err);
 			}
 			
+			var analyzer = new CruParser();
+			analyzer.parse(data);
 			
-			
-			const myChart = vegalite.compile(avgChart).spec;
-			
-			/* SVG version */
-			var runtime = vg.parse(myChart);
-			var view = new vg.View(runtime).renderer('svg').run();
-			var mySvg = view.toSVG();
-			mySvg.then(function(res){
-				fs.writeFileSync("./result.svg", res)
-				view.finalize();
-				logger.info("%s", JSON.stringify(myChart, null, 2));
-				logger.info("Chart output : ./result.svg");
-			});
-			
-			/* Canvas version */
-			/*
-			var runtime = vg.parse(myChart);
-			var view = new vg.View(runtime).renderer('canvas').background("#FFF").run();
-			var myCanvas = view.toCanvas();
-			myCanvas.then(function(res){
-				fs.writeFileSync("./result.png", res.toBuffer());
-				view.finalize();
-				logger.info(myChart);
-				logger.info("Chart output : ./result.png");
-			})			
-			*/
-			
-			
-		}else{
-			logger.info("The .vpf file contains error".red);
-		}
-		
-		});
-	})	
-	
-	
-	// abc
-	.command('abc', 'Organize POI in an Object grouped by name')
-	.argument('<file>', 'The Vpf file to group by')
-	.action(({args, options, logger}) => {
-		fs.readFile(args.file, 'utf8', function (err,data) {
-		if (err) {
-			return logger.warn(err);
-		}
-  
-		analyzer = new VpfParser();
-		analyzer.parse(data);
-		
-		if(analyzer.errorCount === 0){
-
-			var abc = analyzer.parsedPOI.reduce(function(acc, elt){
-				var idx = elt.name.charAt(0);
-				if(acc[idx]){
-					acc[idx].push(elt);
-				}else{
-					acc[idx] = [elt];
+			if (analyzer.errorCount === 0) {
+				const occupancyData = analyzer.getOccupancyStats();
+				
+				const spec = {
+					$schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+					title: 'Taux d\'occupation des salles',
+					description: 'Visualisation du taux d\'occupation des salles sur la période choisie',
+					width: 1600,
+					height: 800,
+					data: { values: occupancyData },
+					mark: 'bar',
+					encoding: {
+						x: {
+							field: 'room',
+							type: 'nominal',
+							title: 'Salle',
+							axis: { labelAngle: -45 }
+						},
+						y: {
+							field: 'occupancyRate',
+							type: 'quantitative',
+							title: 'Taux d\'occupation (%)',
+							scale: { domain: [0, 100] }
+						},
+						color: {
+							field: 'occupancyRate',
+							type: 'quantitative',
+							scale: {
+								scheme: 'redyellowgreen',
+								domain: [0, 50, 100]
+							},
+							title: 'Taux (%)'
+						},
+						tooltip: [
+							{ field: 'room', type: 'nominal', title: 'Salle' },
+							{ field: 'occupancyRate', type: 'quantitative', title: 'Taux d\'occupation (%)', format: '.2f' },
+							{ field: 'totalSlots', type: 'quantitative', title: 'Créneaux' },
+							{ field: 'maxCapacity', type: 'quantitative', title: 'Capacité max' }
+						]
+					}
+				};
+				
+				try {
+					const vegaSpec = vegalite.compile(spec).spec;
+					
+					const view = new vg.View(vg.parse(vegaSpec), {
+						loader: vg.loader(),
+						renderer: 'svg'
+					});
+					
+					view.runAsync().then(() => view.toSVG()).then(svg => {
+						fs.writeFile(args.output, svg, (err) => {
+							if (err) {
+								return logger.warn(err);
+							}
+							logger.info(`Room occupancy visualization exported to ${args.output}`.green);
+							logger.info(`Occupancy data: ${occupancyData.length} rooms analyzed`.cyan);
+						});
+					}).catch(err => {
+						logger.warn(`Error rendering visualization: ${err}`);
+					});
+				} catch (err) {
+					logger.warn(`Error compiling specification: ${err}`);
 				}
-				return acc;
-			}, {})
-
-			logger.info("%s", JSON.stringify(abc, null, 2));
-			
-		}else{
-			logger.info("The .vpf file contains error".red);
-		}
-		
+			} else {
+				logger.info("The .cru file contains error".red);
+			}
 		});
-	})
-	
+	});
+
 	
 cli.run(process.argv.slice(2));
-	
