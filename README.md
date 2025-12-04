@@ -17,4 +17,6 @@ Outil de gestion et de suivi d'occupation des salles de cours utilisant l'emploi
 - [x] Spec NF 1 : Interface CLI claire, messages d'erreur explicites
 - [x] Spec NF 2 : Réponse en =< 2 secondes pour toutes les requêtes
 - [x] Spec NF 3 : ICS compatible Google Calendar / Outlook
-- [ ] Spec NF 4 : Aucune duplication nio recouvrement de salle
+- [ ] Spec NF 4 : Aucune duplication ni recouvrement de salle
+
+- [ ] Remplir le README

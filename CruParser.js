@@ -1,5 +1,5 @@
 var { Course, Slot } = require('./course');
-var iCalendar = require('./icalendar.js');
+var iCalendar = require('./iCalendar.js');
 
 // CruParser
 
