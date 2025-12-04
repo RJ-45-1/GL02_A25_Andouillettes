@@ -117,25 +117,107 @@ cli
 	})
 
 
-	// search
-	.command('search', 'Free text search on Courses\' name')
-	.argument('<file>', 'The Cru file to search')
-	.argument('<needle>', 'The text to look for in Courses\' names')
+	// search for rooms used by a specfic course
+	.command('search-rooms', 'Search for the rooms used for a course\' name')
+	.argument('<path>', 'The Cru file or directory to search')
+	.option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator: cli.BOOLEAN, default: false })
+	.option('-t, --showTokenize', 'log the tokenization results', { validator: cli.BOOLEAN, default: false })
+	.argument('<needle>', 'The text to look for in courses name\' names')
 	.action(({ args, options, logger }) => {
-		fs.readFile(args.file, 'utf8', function (err, data) {
+		const path = args.path;
+		
+		fs.stat(path, (err, stats) => {
 			if (err) {
 				return logger.warn(err);
 			}
 
-			analyzer = new VpfParser();
-			analyzer.parse(data);
+			if (stats.isDirectory()) {
+				// Process folder: find all .cru files recursively
+				const getAllCruFiles = (dir) => {
+					let files = [];
+					const items = fs.readdirSync(dir);
+					
+					items.forEach(item => {
+						const itemPath = require('path').join(dir, item);
+						const itemStats = fs.statSync(itemPath);
+						
+						if (itemStats.isDirectory()) {
+							files = files.concat(getAllCruFiles(itemPath));
+						} else if (item.endsWith('.cru')) {
+							files.push(itemPath);
+						}
+					});
+					
+					return files;
+				};
 
-			if (analyzer.errorCount === 0) {
-				var filtered = analyzer.parsedCourse.filter(p => p.name.includes(args.needle));
-				logger.info("%s", JSON.stringify(filtered, null, 2));
+				const cruFiles = getAllCruFiles(path);
+				
+				if (cruFiles.length === 0) {
+					logger.warn('No .cru files found in the folder');
+					return;
+				}
+
+				
+				
+				cruFiles.forEach(file => {
+					fs.readFile(file, 'utf8', function (err, data) {
+
+						
+
+						if (err) {
+							logger.warn(`Error reading ${file}: ${err}`);
+							errorCount++;
+							return;
+						}
+
+						var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+						analyzer.parse(data);
+
+						
+
+						if (analyzer.errorCount === 0) {
+							const matches = analyzer.parsedCourse.filter(course => course.name.includes(args.needle));
+							
+
+							for (const match of matches) {
+								var rooms = match.getRooms();
+								rooms = rooms.filter((value, index, self) => self.indexOf(value) === index); // fitler out duplicates
+								logger.info(`Course: ${match.name}`.green);
+								logger.info(`Rooms: ${rooms.join(', ')} \n`.cyan);
+							}
+						}
+					});
+				});
+
+				
+
+				
 
 			} else {
-				logger.info("The .cru file contains error".red);
+				// Process single file
+				fs.readFile(path, 'utf8', function (err, data) {
+					if (err) {
+						return logger.warn(err);
+					}
+
+					var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+					analyzer.parse(data);
+
+					if (analyzer.errorCount === 0) {
+						const matches = analyzer.parsedCourse.filter(course => course.name.includes(args.needle));
+						
+
+						for (const match of matches) {
+							var rooms = match.getRooms();
+							rooms = rooms.filter((value, index, self) => self.indexOf(value) === index); // fitler out duplicates
+							logger.info(`Course: ${match.name}`.green);
+							logger.info(`Rooms: ${rooms.join(', ')} \n`.cyan);
+						}
+					}
+
+					logger.debug(analyzer.parsedCourse);
+				});
 			}
 		});
 	})

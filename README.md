@@ -4,7 +4,7 @@ Outil de gestion et de suivi d'occupation des salles de cours utilisant l'emploi
 
 ### Todo List
 
-- [ ] Spec 1 : Rechercher la ou les salles attribuées à un cours
+- [x] Spec 1 : Rechercher la ou les salles attribuées à un cours
 - [ ] Spec 2 : Afficher la capacité maximale d'une salle
 - [ ] Spec 3 : Visualiser les créneaux où une salle est libre sur la semaine
 - [ ] Spec 4 : Rechercher les salles disponibles sur un horaire donné
