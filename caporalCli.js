@@ -335,7 +335,118 @@ cli
 				logger.info("The .cru file contains error".red);
 			}
 		});
-	});
+	})
 
+
+
+    .command('get-room-capacity', 'Display room max capacity\' name')
+    .argument('<path>', 'The Cru file or directory to search')
+    .option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator: cli.BOOLEAN, default: false })
+    .option('-t, --showTokenize', 'log the tokenization results', { validator: cli.BOOLEAN, default: false })
+    .argument('<needle>', 'The text to look for in rooms names')
+    .action(({ args, options, logger }) => {
+        const path = args.path;
+
+        fs.stat(path, (err, stats) => {
+            if (err) {
+                return logger.warn(err);
+            }
+
+            if (stats.isDirectory()) {
+                // Process folder: find all .cru files recursively
+                const getAllCruFiles = (dir) => {
+                    let files = [];
+                    const items = fs.readdirSync(dir);
+
+                    items.forEach(item => {
+                        const itemPath = require('path').join(dir, item);
+                        const itemStats = fs.statSync(itemPath);
+
+                        if (itemStats.isDirectory()) {
+                            files = files.concat(getAllCruFiles(itemPath));
+                        } else if (item.endsWith('.cru')) {
+                            files.push(itemPath);
+                        }
+                    });
+
+                    return files;
+                };
+
+                const cruFiles = getAllCruFiles(path);
+
+                if (cruFiles.length === 0) {
+                    logger.warn('No .cru files found in the folder');
+                    return;
+                }
+
+
+                const capacities = []
+                const maxCapacities = []
+                cruFiles.forEach((file) => {
+                    fs.readFile(file , 'utf8', function (err, data) {
+
+
+
+                        if (err) {
+                            logger.warn(`Error reading ${file}: ${err}`);
+                            errorCount++;
+                            return;
+                        }
+
+                        var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+                        analyzer.parse(data);
+
+
+
+                        if (analyzer.errorCount === 0) {
+                            const matches = analyzer.parsedCourse.map(function(match) {
+                                for (room of match.getRooms()){
+                                    if (room === args.needle){
+                                        return match.getSlotsByRoom(room)
+                                    }
+                                }
+                            });
+
+
+                            for (let match of matches) {
+                                    if (match !== undefined) {
+                                        match.forEach((slot) => !capacities.includes(slot.capacity) ? capacities.push(slot.capacity) : null)
+                                    }
+                            }
+                            capacities.forEach((capacity) => maxCapacities.push(Math.max(capacity)))
+
+                        }
+                    })
+                });
+
+
+
+            } else {
+                // Process single file
+                fs.readFile(path, 'utf8', function (err, data) {
+                    if (err) {
+                        return logger.warn(err);
+                    }
+
+                    var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+                    analyzer.parse(data);
+
+                    if (analyzer.errorCount === 0) {
+                        const matches = analyzer.parsedCourse.filter(course => course.name.includes(args.needle));
+
+
+                        for (const match of matches) {
+                            var rooms = match.getRooms();
+                            rooms = rooms.filter((value, index, self) => self.indexOf(value) === index); // fitler out duplicates
+                            logger.info(`Course: ${match.name}`.green);
+                            logger.info(`Rooms: ${rooms.join(', ')} \n`.cyan);
+                        }
+                    }
+
+                    logger.debug(analyzer.parsedCourse);
+                });
+            }
+        });
+    })
 	
 cli.run(process.argv.slice(2));
