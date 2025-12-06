@@ -379,7 +379,7 @@ cli
                     return;
                 }
 
-
+                let defMaxCapacity;
                 const capacities = []
                 const maxCapacities = []
                 cruFiles.forEach((file) => {
@@ -397,11 +397,10 @@ cli
                         analyzer.parse(data);
 
 
-
                         if (analyzer.errorCount === 0) {
-                            const matches = analyzer.parsedCourse.map(function(match) {
-                                for (room of match.getRooms()){
-                                    if (room === args.needle){
+                            const matches = analyzer.parsedCourse.map(function (match) {
+                                for (room of match.getRooms()) {
+                                    if (room === args.needle) {
                                         return match.getSlotsByRoom(room)
                                     }
                                 }
@@ -409,11 +408,17 @@ cli
 
 
                             for (let match of matches) {
-                                    if (match !== undefined) {
-                                        match.forEach((slot) => !capacities.includes(slot.capacity) ? capacities.push(slot.capacity) : null)
-                                    }
+                                if (match !== undefined) {
+                                    match.forEach((slot) => !capacities.includes(slot.capacity) ? capacities.push(slot.capacity) : null)
+                                }
                             }
                             capacities.forEach((capacity) => maxCapacities.push(Math.max(capacity)))
+                            maxCapacities.forEach((maxCapacity) => defMaxCapacity = Math.max(maxCapacity))
+
+                            if (defMaxCapacity !== undefined) {
+                                logger.info(`Room: ${args.needle}`.green);
+                                logger.info(`Course: ${defMaxCapacity} \n`.green);
+                            }
 
                         }
                     })
@@ -432,18 +437,33 @@ cli
                     analyzer.parse(data);
 
                     if (analyzer.errorCount === 0) {
-                        const matches = analyzer.parsedCourse.filter(course => course.name.includes(args.needle));
+                        const matches = analyzer.parsedCourse.map(function (match) {
+                            for (room of match.getRooms()) {
+                                if (room === args.needle) {
+                                    return match.getSlotsByRoom(room)
+                                }
+                            }
+                        });
 
+                        let defMaxCapacity;
+                        const capacities = []
+                        const maxCapacities = []
 
-                        for (const match of matches) {
-                            var rooms = match.getRooms();
-                            rooms = rooms.filter((value, index, self) => self.indexOf(value) === index); // fitler out duplicates
-                            logger.info(`Course: ${match.name}`.green);
-                            logger.info(`Rooms: ${rooms.join(', ')} \n`.cyan);
+                        for (let match of matches) {
+                            if (match !== undefined) {
+                                match.forEach((slot) => !capacities.includes(slot.capacity) ? capacities.push(slot.capacity) : null)
+                            }
                         }
-                    }
+                        capacities.forEach((capacity) => maxCapacities.push(Math.max(capacity)))
+                        maxCapacities.forEach((maxCapacity) => defMaxCapacity = Math.max(maxCapacity))
 
-                    logger.debug(analyzer.parsedCourse);
+                        if (defMaxCapacity !== undefined) {
+                            logger.info(`Room: ${args.needle}`.green);
+                            logger.info(`Course: ${defMaxCapacity} \n`.green);
+                        }
+
+                        logger.debug(analyzer.parsedCourse);
+                    }
                 });
             }
         });

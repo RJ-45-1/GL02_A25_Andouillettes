@@ -2,7 +2,7 @@
 # Todo List
 
 - [x] Spec 1 : Rechercher la ou les salles attribuées à un cours
-- [ ] Spec 2 : Afficher la capacité maximale d'une salle
+- [x] Spec 2 : Afficher la capacité maximale d'une salle
 - [ ] Spec 3 : Visualiser les créneaux où une salle est libre sur la semaine
 - [ ] Spec 4 : Rechercher les salles disponibles sur un horaire donné
 - [x] Spec 5 : Générer un fichier ICS des cours suivis par un usager

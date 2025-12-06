@@ -54,6 +54,11 @@ node caporalCli visualize-occupancy <chemin/vers/un/fichier.cru> <fichier.svg>
 ```
 Produit un fichier.svg permettant de visualiser le taux d'occupation d'une salle
 
+```
+node caporalCli get-room-capacity <chemin/vers/un/fichier.cru> <nom d'une salle>
+```
+Donne la capacité maximale de la salle passée en paramètre
+
 ## Dépendances
 
 * [Caporal.js](https://github.com/mattallty/Caporal.js) - Framework de construction d'application en lignes de commandes
@@ -64,7 +69,7 @@ Produit un fichier.svg permettant de visualiser le taux d'occupation d'une salle
 
 - Alec BASSET _alias_ [@Eylexander](https://github.com/Eylexander) joignable via alec.basset@utt.fr
 - Lancelot ROGER _alias_ [@39soup](https://github.com/39soup) joignable via lancelot.roger@utt.fr
-- Antoine NERET _alias_ [@AntoineNeret](https://github.com/AntoineNeret) joignable antoine.neret@utt.fr
+- Antoine NERET _alias_ [@AntoineNeret](https://github.com/AntoineNeret) joignable via antoine.neret@utt.fr
 
 ## Licence
 
