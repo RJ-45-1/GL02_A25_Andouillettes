@@ -339,7 +339,7 @@ cli
 
 
 
-    .command('get-room-capacity', 'Display room max capacity\' name')
+    .command('get-room-capacity', 'Display room max capacity')
     .argument('<path>', 'The Cru file or directory to search')
     .option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator: cli.BOOLEAN, default: false })
     .option('-t, --showTokenize', 'log the tokenization results', { validator: cli.BOOLEAN, default: false })
@@ -462,6 +462,148 @@ cli
                             logger.info(`Course: ${defMaxCapacity} \n`.green);
                         }
 
+                        logger.debug(analyzer.parsedCourse);
+                    }
+                });
+            }
+        });
+    })
+
+
+    //Sort rooms by capacity
+    .command('sort-room-capacity', 'Sort rooms by capacity')
+    .argument('<path>', 'The Cru file or directory to search')
+    .option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator: cli.BOOLEAN, default: false })
+    .option('-t, --showTokenize', 'log the tokenization results', { validator: cli.BOOLEAN, default: false })
+    .action(({ args, options, logger }) => {
+        const path = args.path;
+
+        fs.stat(path, (err, stats) => {
+            if (err) {
+                return logger.warn(err);
+            }
+
+            if (stats.isDirectory()) {
+                // Process folder: find all .cru files recursively
+                const getAllCruFiles = (dir) => {
+                    let files = [];
+                    const items = fs.readdirSync(dir);
+
+                    items.forEach(item => {
+                        const itemPath = require('path').join(dir, item);
+                        const itemStats = fs.statSync(itemPath);
+
+                        if (itemStats.isDirectory()) {
+                            files = files.concat(getAllCruFiles(itemPath));
+                        } else if (item.endsWith('.cru')) {
+                            files.push(itemPath);
+                        }
+                    });
+
+                    return files;
+                };
+
+                const cruFiles = getAllCruFiles(path);
+
+                if (cruFiles.length === 0) {
+                    logger.warn('No .cru files found in the folder');
+                    return;
+                }
+
+                cruFiles.forEach((file) => {
+                    fs.readFile(file , 'utf8', function (err, data) {
+
+
+
+                        if (err) {
+                            logger.warn(`Error reading ${file}: ${err}`);
+                            errorCount++;
+                            return;
+                        }
+
+                        var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+                        analyzer.parse(data);
+
+
+                        if (analyzer.errorCount === 0) {
+                            const matches = analyzer.parsedCourse.map(function (match) {
+                                return match.slots
+                            });
+
+
+                            let roomSlots = []
+                            for (let match of matches) {
+                                if (match !== undefined) {
+                                    for (let slot of match){
+                                        if (!roomSlots.includes(slot.capacity) && !roomSlots.includes(slot.room)){
+                                            roomSlots.push({
+                                                "room": slot.room,
+                                                "capacity": slot.capacity
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                            roomSlots.sort(function compare(a, b) {
+                                if (a.capacity < b.capacity)
+                                    return -1;
+                                if (a.capacity > b.capacity )
+                                    return 1;
+                                return 0;
+                            });
+
+                            for (let roomSlot of roomSlots) {
+                                logger.info(`Room: ${roomSlot.room}`.green);
+                                logger.info(`Capacity: ${roomSlot.capacity} \n`.green);
+                            }
+                            logger.debug(analyzer.parsedCourse);
+                        }
+                    })
+                });
+
+
+
+            } else {
+                // Process single file
+                fs.readFile(path, 'utf8', function (err, data) {
+                    if (err) {
+                        return logger.warn(err);
+                    }
+
+                    var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+                    analyzer.parse(data);
+
+                    if (analyzer.errorCount === 0) {
+                        const matches = analyzer.parsedCourse.map(function (match) {
+                            return match.slots
+                        });
+
+
+                        let roomSlots = []
+                        for (let match of matches) {
+                            if (match !== undefined) {
+                                for (let slot of match){
+                                    if (!roomSlots.includes(slot.capacity) && !roomSlots.includes(slot.room)){
+                                        roomSlots.push({
+                                            "room": slot.room,
+                                            "capacity": slot.capacity
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                        roomSlots.sort(function compare(a, b) {
+                            if (a.capacity < b.capacity)
+                                return -1;
+                            if (a.capacity > b.capacity )
+                                return 1;
+                            return 0;
+                        });
+
+                        for (let roomSlot of roomSlots) {
+                            logger.info(`Room: ${roomSlot.room}`.green);
+                            logger.info(`Capacity: ${roomSlot.capacity} \n`.green);
+                        }
                         logger.debug(analyzer.parsedCourse);
                     }
                 });

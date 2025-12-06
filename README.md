@@ -59,6 +59,11 @@ node caporalCli get-room-capacity <chemin/vers/un/fichier.cru> <nom d'une salle>
 ```
 Donne la capacité maximale de la salle passée en paramètre
 
+```
+node caporalCli sort-room-capacity <chemin/vers/un/fichier.cru>
+```
+Donne un affichage du nom des salles avec leur capacité trié par ordre croissant
+
 ## Dépendances
 
 * [Caporal.js](https://github.com/mattallty/Caporal.js) - Framework de construction d'application en lignes de commandes

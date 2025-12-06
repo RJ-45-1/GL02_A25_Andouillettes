@@ -8,7 +8,7 @@
 - [x] Spec 5 : Générer un fichier ICS des cours suivis par un usager
 - [ ] Spec 6 : Détecter les chevauchements interdits dans les données
 - [x] Spec 7 : Générer des statistiques de taux d'utilisation des salles
-- [ ] Spec 8 : Lister les salles selon leur capacité d'acceuil
+- [x] Spec 8 : Lister les salles selon leur capacité d'acceuil
 - [ ] Spec 9 : Identifier les salles surexploitées ou sous-utilisées
 
 - [x] Spec NF 1 : Interface CLI claire, messages d'erreur explicites
