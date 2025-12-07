@@ -68,6 +68,10 @@ Donne un affichage du nom des salles avec leur capacité trié par ordre croissa
 node caporalCli room-occupancy <chemin/vers/un/fichier.cru> <nom d'une salle>
 ```
 Donne un affichage des moments où une salle est utilisée durant la semaine
+```
+node caporalCli available-rooms <chemin/vers/un/fichier.cru> <D HH:MM>
+```
+Donne un affichage des salles disponibles à un temps donné
 
 ## Dépendances
 

@@ -613,8 +613,8 @@ cli
 	
 
 
-// search for when a room is used during the week
-	.command('room-occupancy', 'Displays every time where a room is used during the week\' name')
+	// search for when a room is used during the week
+	.command('room-occupancy', 'Displays every time where a room is used during the week')
 	.argument('<path>', 'The Cru file or directory to search')
 	.option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator: cli.BOOLEAN, default: false })
 	.option('-t, --showTokenize', 'log the tokenization results', { validator: cli.BOOLEAN, default: false })
@@ -719,6 +719,124 @@ cli
 			}
 		});
 	})
+
+
+
+	// search for available rooms at a given time
+	.command('available-rooms', 'Search for available rooms at a given time')
+	.argument('<path>', 'The Cru file or directory to search')
+	.option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator: cli.BOOLEAN, default: false })
+	.option('-t, --showTokenize', 'log the tokenization results', { validator: cli.BOOLEAN, default: false })
+	.argument('<needle>', 'Time to check (e.g., "L 10:00")')
+	.action(({ args, options, logger }) => {
+
+		// checking time format
+		if (!/^(L|MA|ME|J|V|S) ([0-1][0-9]|2[0-3]):([0-5][0-9])$/.test(args.needle)) {
+			logger.error('Invalid time format. Use "D HH:MM" where D is a day (L, MA, ME, J, V, S) and HH:MM is time in 24-hour format.');
+			return;
+		}
+
+		const path = args.path;
+		
+		fs.stat(path, (err, stats) => {
+			if (err) {
+				return logger.warn(err);
+			}
+
+			if (stats.isDirectory()) {
+				// Process folder: find all .cru files recursively
+				const getAllCruFiles = (dir) => {
+					let files = [];
+					const items = fs.readdirSync(dir);
+					
+					items.forEach(item => {
+						const itemPath = require('path').join(dir, item);
+						const itemStats = fs.statSync(itemPath);
+						
+						if (itemStats.isDirectory()) {
+							files = files.concat(getAllCruFiles(itemPath));
+						} else if (item.endsWith('.cru')) {
+							files.push(itemPath);
+						}
+					});
+					
+					return files;
+				};
+
+				const cruFiles = getAllCruFiles(path);
+				
+				if (cruFiles.length === 0) {
+					logger.warn('No .cru files found in the folder');
+					return;
+				}
+
+				
+				
+				cruFiles.forEach(file => {
+					fs.readFile(file, 'utf8', function (err, data) {
+
+						if (err) {
+							logger.warn(`Error reading ${file}: ${err}`);
+							errorCount++;
+							return;
+						}
+
+						var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+						analyzer.parse(data);
+
+						if (analyzer.errorCount === 0) {
+							
+							
+														
+						}
+					});
+				});
+
+			
+
+			} else {
+				// Process single file
+				fs.readFile(path, 'utf8', function (err, data) {
+					if (err) {
+						return logger.warn(err);
+					}
+
+					var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+					analyzer.parse(data);
+
+					if (analyzer.errorCount === 0) {
+						const allRooms = new Set();
+							const occupiedRooms = new Set();
+							const [day, time] = args.needle.split(' ');
+							
+							analyzer.parsedCourse.forEach(course => {
+								course.getRooms().forEach(room => allRooms.add(room));
+								course.slots.forEach(slot => {
+									if (slot.day === day) {
+										const slotStart = slot.getStartMinutes();
+										const slotEnd = slot.getEndMinutes();
+										const [timeHour, timeMinute] = time.split(':').map(Number);
+										const timeMinutes = timeHour * 60 + timeMinute; // on convertit le temps en minutes pour la comparaison
+										if (timeMinutes >= slotStart && timeMinutes < slotEnd) {
+											occupiedRooms.add(slot.room);
+										}
+									}
+								});
+							});
+
+							var availableRooms = [...allRooms].filter(room => !occupiedRooms.has(room));
+							availableRooms = availableRooms.filter((value, index, self) => self.indexOf(value) === index); // filter out duplicates
+							availableRooms.forEach(room => {
+								logger.info(`Available - ${room}`.cyan);
+							});		
+					}
+
+					logger.debug(analyzer.parsedCourse);
+				});
+			}
+		});
+	})
+
 
 
 cli.run(process.argv.slice(2));
