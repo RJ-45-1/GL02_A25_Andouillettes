@@ -611,4 +611,114 @@ cli
         });
     })
 	
+
+
+// search for when a room is used during the week
+	.command('room-occupancy', 'Displays every time where a room is used during the week\' name')
+	.argument('<path>', 'The Cru file or directory to search')
+	.option('-s, --showSymbols', 'log the analyzed symbol at each step', { validator: cli.BOOLEAN, default: false })
+	.option('-t, --showTokenize', 'log the tokenization results', { validator: cli.BOOLEAN, default: false })
+	.argument('<needle>', 'Room\'s name\'')
+	.action(({ args, options, logger }) => {
+		const path = args.path;
+		
+		fs.stat(path, (err, stats) => {
+			if (err) {
+				return logger.warn(err);
+			}
+
+			if (stats.isDirectory()) {
+				// Process folder: find all .cru files recursively
+				const getAllCruFiles = (dir) => {
+					let files = [];
+					const items = fs.readdirSync(dir);
+					
+					items.forEach(item => {
+						const itemPath = require('path').join(dir, item);
+						const itemStats = fs.statSync(itemPath);
+						
+						if (itemStats.isDirectory()) {
+							files = files.concat(getAllCruFiles(itemPath));
+						} else if (item.endsWith('.cru')) {
+							files.push(itemPath);
+						}
+					});
+					
+					return files;
+				};
+
+				const cruFiles = getAllCruFiles(path);
+				
+				if (cruFiles.length === 0) {
+					logger.warn('No .cru files found in the folder');
+					return;
+				}
+
+				
+				
+				cruFiles.forEach(file => {
+					fs.readFile(file, 'utf8', function (err, data) {
+
+						if (err) {
+							logger.warn(`Error reading ${file}: ${err}`);
+							errorCount++;
+							return;
+						}
+
+						var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+						analyzer.parse(data);
+
+						if (analyzer.errorCount === 0) {
+							const matches = analyzer.parsedCourse.map(function (match) {
+								return match.getSlotsByRoom(args.needle);
+							});
+							for (const match of matches) {
+								if (match !== undefined) {
+									
+									match.forEach((slot) => {
+										
+										logger.info(`Day: ${slot.day}, Hours: ${slot.start} - ${slot.end}`.cyan);
+									});
+								}
+							}
+						}
+					});
+				});
+
+				
+
+				
+
+			} else {
+				// Process single file
+				fs.readFile(path, 'utf8', function (err, data) {
+					if (err) {
+						return logger.warn(err);
+					}
+
+					var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+					analyzer.parse(data);
+
+					if (analyzer.errorCount === 0) {
+							const matches = analyzer.parsedCourse.map(function (match) {
+								return match.getSlotsByRoom(args.needle);
+							});
+							for (const match of matches) {
+								if (match !== undefined) {
+									
+									match.forEach((slot) => {
+										
+										logger.info(`Day: ${slot.day}, Hours: ${slot.start} - ${slot.end}`.cyan);
+									});
+								}
+							}
+						}
+
+					logger.debug(analyzer.parsedCourse);
+				});
+			}
+		});
+	})
+
+
 cli.run(process.argv.slice(2));

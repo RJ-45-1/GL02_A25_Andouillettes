@@ -64,6 +64,11 @@ node caporalCli sort-room-capacity <chemin/vers/un/fichier.cru>
 ```
 Donne un affichage du nom des salles avec leur capacité trié par ordre croissant
 
+```
+node caporalCli room-occupancy <chemin/vers/un/fichier.cru> <nom d'une salle>
+```
+Donne un affichage des moments où une salle est utilisée durant la semaine
+
 ## Dépendances
 
 * [Caporal.js](https://github.com/mattallty/Caporal.js) - Framework de construction d'application en lignes de commandes
