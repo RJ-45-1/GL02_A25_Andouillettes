@@ -586,20 +586,11 @@ cli
 	})
 
 
-	// search for availability of said room at a given time
-	.command('available-room', 'Search for available rooms at a given time')
-	.argument('<path>', 'The Cru file or directory to search')
-	.argument('<room>', 'Room to check availability for')
-	.argument('<needle>', 'Time to check (e.g., "L 10:00")')
+	// verify
+	.command('verify', 'Check for room conflicts in the schedule')
+	.argument('<path>', 'The Cru file or directory to verify')
 	.action(({ args, options, logger }) => {
-
-		const { path, room, needle } = args;
-
-		// checking time format
-		if (!/^(L|MA|ME|J|V|S) ([0-1][0-9]|2[0-3]):([0-5][0-9])$/.test(needle)) {
-			logger.error('Invalid time format. Use "D HH:MM" where D is a day (L, MA, ME, J, V, S) and HH:MM is time in 24-hour format.'.red);
-			return;
-		}
+		const path = args.path;
 
 		fs.stat(path, (err, stats) => {
 			if (err) {
@@ -615,7 +606,7 @@ cli
 
 			const masterAnalyzer = new CruParser();
 
-			var filesProcessed = 0;
+			let filesProcessed = 0;
 
 			files.forEach(file => {
 				fs.readFile(file, 'utf8', (err, data) => {
@@ -625,7 +616,7 @@ cli
 						return;
 					}
 
-					var analyzer = new CruParser();
+					const analyzer = new CruParser();
 					analyzer.parse(data);
 
 					if (analyzer.errorCount === 0) {
@@ -638,31 +629,119 @@ cli
 
 					if (filesProcessed === files.length) {
 						if (masterAnalyzer.parsedCourse.length > 0) {
+							const conflicts = masterAnalyzer.detectConflicts();
 
-							const [dayPart, timePart] = needle.split(' ');
-							const [hourPart, minutePart] = timePart.split(':');
-							const checkMinutes = parseInt(hourPart) * 60 + parseInt(minutePart);
-
-							const occupiedRooms = new Set();
-
-							masterAnalyzer.parsedCourse.forEach(course => {
-								course.slots.forEach(slot => {
-									if (slot.day === dayPart) {
-										const slotStart = slot.getStartMinutes();
-										const slotEnd = slot.getEndMinutes();
-										if (checkMinutes >= slotStart && checkMinutes < slotEnd) {
-											occupiedRooms.add(slot.room);
-										}
-									}
+							if (conflicts.length === 0) {
+								logger.info('Aucun chevauchement détecté'.green);
+							} else {
+								logger.warn(`${conflicts.length} conflit(s) détecté(s):`.yellow);
+								conflicts.forEach((conflict, index) => {
+									logger.info(`\nConflit ${index + 1}:`.red);
+									logger.info(`  Salle: ${conflict.room}`.cyan);
+									logger.info(`  Cours 1: ${conflict.course1} (${conflict.slot1.type}): ${conflict.slot1.start} - ${conflict.slot1.end}`.yellow);
+									logger.info(`  Cours 2: ${conflict.course2} (${conflict.slot2.type}): ${conflict.slot2.start} - ${conflict.slot2.end}`.yellow);
 								});
-							});
+							}
+						} else if (masterAnalyzer.parsedCourse.length === 0) {
+							logger.warn('No valid courses found to verify');
+						}
+					}
+				});
+			});
+		});
+	})
 
-							const isRoomOccupied = occupiedRooms.has(room);
 
-							logger.info(`Room ${room} on ${dayPart} at ${timePart}: ${isRoomOccupied ? 'Occupied'.red : 'Available'.green}`);
+	// room-usage
+	.command('room-usage', 'Analyze room usage: identify under and over-utilized rooms')
+	.argument('<path>', 'The Cru file or directory to analyze')
+	.option('-lt, --lowThreshold <lowThreshold>', 'Occupancy rate threshold for under-utilization (%)', { validator: cli.NUMBER, default: 30 })
+	.option('-ht, --highThreshold <highThreshold>', 'Occupancy rate threshold for over-utilization (%)', { validator: cli.NUMBER, default: 80 })
+	.action(({ args, options, logger }) => {
+		const { path } = args;
+		const lowThreshold = options.lowThreshold;
+		const highThreshold = options.highThreshold;
+
+		fs.stat(path, (err, stats) => {
+			if (err) {
+				return logger.warn(err);
+			}
+
+			const files = stats.isDirectory() ? getAllCruFiles(path) : [path];
+
+			if (files.length === 0) {
+				logger.warn('No .cru files found in the folder');
+				return;
+			}
+
+			const masterAnalyzer = new CruParser();
+
+			let filesProcessed = 0;
+
+			files.forEach(file => {
+				fs.readFile(file, 'utf8', (err, data) => {
+					if (err) {
+						logger.warn(`Error reading ${file}: ${err}`);
+						filesProcessed++;
+						return;
+					}
+
+					const analyzer = new CruParser();
+					analyzer.parse(data);
+
+					if (analyzer.errorCount === 0) {
+						masterAnalyzer.parsedCourse = masterAnalyzer.parsedCourse.concat(analyzer.parsedCourse);
+					} else {
+						logger.warn(`${file} contains ${analyzer.errorCount} error(s)`);
+					}
+
+					filesProcessed++;
+
+					if (filesProcessed === files.length) {
+						if (masterAnalyzer.parsedCourse.length > 0) {
+							const occupancyData = masterAnalyzer.getOccupancyStats();
+
+							const underUtilized = occupancyData.filter(room => parseFloat(room.occupancyRate) < lowThreshold);
+							const overUtilized = occupancyData.filter(room => parseFloat(room.occupancyRate) > highThreshold);
+							
+							logger.info(`Salles sous-utilisées (< ${lowThreshold}%): ${underUtilized.length} salle(s)`.yellow);
+
+							if (underUtilized.length > 0) {
+								underUtilized.sort((a, b) => parseFloat(a.occupancyRate) - parseFloat(b.occupancyRate));
+								console.table(underUtilized.map(room => ({
+									'Salle': room.room,
+									'Taux (%)': parseFloat(room.occupancyRate).toFixed(2),
+									'Capacité': room.maxCapacity,
+									'Créneaux': room.totalSlots
+								})));
+							} else {
+								logger.info('Aucune salle sous-utilisée'.green);
+							}
+
+							logger.info(`Salles surchargées (> ${highThreshold}%): ${overUtilized.length} salle(s)`.yellow);
+
+							if (overUtilized.length > 0) {
+								overUtilized.sort((a, b) => parseFloat(b.occupancyRate) - parseFloat(a.occupancyRate));
+								console.table(overUtilized.map(room => ({
+									'Salle': room.room,
+									'Taux (%)': parseFloat(room.occupancyRate).toFixed(2),
+									'Capacité': room.maxCapacity,
+									'Créneaux': room.totalSlots
+								})));
+							} else {
+								logger.info('Aucune salle surchargée'.green);
+							}
+
+							logger.info(`Rapport :`.green);
+
+							const totalRooms = occupancyData.length;
+							const avgOccupancy = (occupancyData.reduce((sum, room) => sum + parseFloat(room.occupancyRate), 0) / totalRooms).toFixed(2);
+
+							logger.info(`Total de salles analysées: ${totalRooms}`.cyan);
+							logger.info(`Taux d'occupation moyen: ${avgOccupancy}%`.cyan);
 
 						} else if (masterAnalyzer.parsedCourse.length === 0) {
-							logger.warn('No valid courses found to search');
+							logger.warn('No valid courses found to analyze');
 						}
 					}
 				});

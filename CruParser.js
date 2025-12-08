@@ -518,5 +518,4 @@ CruParser.prototype.exportToICS = function (startDateStr, endDateStr) {
 	return ics += 'END:VCALENDAR\r\n';
 }
 
-
 module.exports = CruParser;
