@@ -73,6 +73,16 @@ node caporalCli available-rooms <chemin/vers/un/fichier.cru> <D HH:MM>
 ```
 Donne un affichage des salles disponibles à un temps donné
 
+```
+node caporalCli room-usage <chemin/vers/un/fichier.cru>
+```
+Affiche les salles sous-utilisées et les salles sur-utilisées
+
+```
+node caporalCli verify <chemin/vers/un/fichier.cru>
+```
+Vérifie les chevauchements de salles dans les données
+
 ## Dépendances
 
 * [Caporal.js](https://github.com/mattallty/Caporal.js) - Framework de construction d'application en lignes de commandes
