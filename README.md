@@ -2,21 +2,99 @@
 
 Outil de gestion et de suivi d'occupation des salles de cours utilisant l'emploi du temps au format CRU avec génération d'iCalendar pour les utilisateurs.
 
-### Todo List
+## Pour commencer
 
-- [ ] Spec 1 : Rechercher la ou les salles attribuées à un cours
-- [ ] Spec 2 : Afficher la capacité maximale d'une salle
-- [ ] Spec 3 : Visualiser les créneaux où une salle est libre sur la semaine
-- [ ] Spec 4 : Rechercher les salles disponibles sur un horaire donné
-- [x] Spec 5 : Générer un fichier ICS des cours suivis par un usager
-- [ ] Spec 6 : Détecter les chevauchements interdits dans les données
-- [x] Spec 7 : Générer des statistiques de taux d'utilisation des salles
-- [ ] Spec 8 : Lister les salles selon leur capacité d'acceuil
-- [ ] Spec 9 : Identifier les salles surexploitées ou sous-utilisées
+### Pré-requis : installation de Node.js
 
-- [x] Spec NF 1 : Interface CLI claire, messages d'erreur explicites
-- [x] Spec NF 2 : Réponse en =< 2 secondes pour toutes les requêtes
-- [x] Spec NF 3 : ICS compatible Google Calendar / Outlook
-- [ ] Spec NF 4 : Aucune duplication ni recouvrement de salle
+Cet outil requiert l'installation de Node.js
 
-- [ ] Remplir le README
+- Site de Node.js : https://nodejs.org/fr
+- Distributions binaires pour divers Linux : https://github.com/nodesource/distributions
+- Image Docker officielle : https://hub.docker.com/_/node/
+
+### Installation
+
+Pour installer le projet, exécutez la commande ci-dessous dans un terminal:
+```
+git clone https://github.com/Eylexander/GL02_A25_Andouillettes.git
+```
+Puis une fois l'outil téléchargé, exécutez la commande suivante dans un terminal ouvert dans l'outil
+```
+npm install
+```
+
+### Exécution
+
+Une fois l'installation terminée, vous êtes prêt à utiliser l'outil.
+Vous avez la possibilité d'utiliser toutes les commandes ci-dessous:
+
+```
+node caporalCli check <chemin/vers/un/fichier.cru>
+```
+Vérifie que le fichier passé en paramètre est un fichier cru valide
+
+```
+node caporalCli readme
+```
+Affiche le fichier README du projet
+
+
+```
+node caporalCli search-rooms <chemin/vers/un/fichier.cru> <nom d'un cours>
+```
+Cherche les salles utilisées par certains cours
+
+```
+node caporalCli export <chemin/vers/un/fichier.cru> <fichier.ics> -sd|--startDate -ed|--endDate
+```
+Exporte les fichiers.cru en fichier.ics au format iCalendar
+
+```
+node caporalCli visualize-occupancy <chemin/vers/un/fichier.cru> <fichier.svg>
+```
+Produit un fichier.svg permettant de visualiser le taux d'occupation d'une salle
+
+```
+node caporalCli get-room-capacity <chemin/vers/un/fichier.cru> <nom d'une salle>
+```
+Donne la capacité maximale de la salle passée en paramètre
+
+```
+node caporalCli sort-room-capacity <chemin/vers/un/fichier.cru>
+```
+Donne un affichage du nom des salles avec leur capacité trié par ordre croissant
+
+```
+node caporalCli room-occupancy <chemin/vers/un/fichier.cru> <nom d'une salle>
+```
+Donne un affichage des moments où une salle est utilisée durant la semaine
+```
+node caporalCli available-rooms <chemin/vers/un/fichier.cru> <D HH:MM>
+```
+Donne un affichage des salles disponibles à un temps donné
+
+```
+node caporalCli room-usage <chemin/vers/un/fichier.cru>
+```
+Affiche les salles sous-utilisées et les salles sur-utilisées
+
+```
+node caporalCli verify <chemin/vers/un/fichier.cru>
+```
+Vérifie les chevauchements de salles dans les données
+
+## Dépendances
+
+* [Caporal.js](https://github.com/mattallty/Caporal.js) - Framework de construction d'application en lignes de commandes
+* [Jasmine](https://jasmine.github.io/index.html) - Framework de test unitaire
+* [Vega-lite](https://vega.github.io/vega-lite/) - Outil de visualisation de données
+
+## Auteurs
+
+- Alec BASSET _alias_ [@Eylexander](https://github.com/Eylexander) joignable via alec.basset@utt.fr
+- Lancelot ROGER _alias_ [@39soup](https://github.com/39soup) joignable via lancelot.roger@utt.fr
+- Antoine NERET _alias_ [@AntoineNeret](https://github.com/AntoineNeret) joignable via antoine.neret@utt.fr
+
+## Licence
+
+Ce projet est sous licence ``MIT License`` - voir sur [choosealicense.com](https://choosealicense.com/licenses/mit/)

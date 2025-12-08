@@ -4,7 +4,6 @@ var iCalendar = require('./iCalendar.js');
 // CruParser
 
 var CruParser = function (sTokenize, sParsedSymbols) {
-	// The list of course parsed from the input file.
 	this.parsedCourse = [];
 	this.symb = ["+", "//"];
 	this.showTokenize = sTokenize;
@@ -22,28 +21,23 @@ CruParser.prototype.tokenize = function (data) {
 
 	for (var i = 0; i < allLines.length; i++) {
 		var line = allLines[i].trim();
-		// Skip empty lines
 		if (line.length === 0) {
 			continue;
 		}
 
 		if (line.startsWith('+')) {
 			var courseName = line.substring(1);
-			// Skip UVUV course
 			if (courseName === 'UVUV') {
 				continue;
 			}
-			// Course line token
 			tokens.push({
 				type: 'COURSE',
 				value: courseName,
 				raw: line
 			});
 		} else if (/^\d/.test(line)) {
-			// Slot line token - can contain linked sessions
 			var slotDataArray = this.parseSlotLine(line);
 			if (slotDataArray) {
-				// parseSlotLine returns an array of slot data objects
 				for (var j = 0; j < slotDataArray.length; j++) {
 					tokens.push({
 						type: 'SLOT',
@@ -53,7 +47,6 @@ CruParser.prototype.tokenize = function (data) {
 				}
 			}
 		}
-		// Comments and other lines are ignored
 	}
 
 	return tokens;
@@ -409,30 +402,6 @@ CruParser.prototype.getRoomSlots = function (room) {
 	return slots;
 }
 
-// Get free rooms for a specific day and time slot
-CruParser.prototype.getFreeRoomsForTimeSlot = function (day, startTime, endTime) {
-	var allRooms = this.getAllRooms();
-	var busyRooms = [];
-	
-	// Create a temporary slot to check overlaps
-	var tempSlot = new Slot('XX', 0, day, startTime, endTime, '0', '');
-	
-	for (var i = 0; i < this.parsedCourse.length; i++) {
-		var slots = this.parsedCourse[i].slots;
-		for (var j = 0; j < slots.length; j++) {
-			if (slots[j].overlaps(tempSlot)) {
-				if (busyRooms.indexOf(slots[j].room) === -1) {
-					busyRooms.push(slots[j].room);
-				}
-			}
-		}
-	}
-	
-	return allRooms.filter(function(room) {
-		return busyRooms.indexOf(room) === -1;
-	});
-}
-
 // Detect conflicts - overlapping slots in the same room
 CruParser.prototype.detectConflicts = function () {
 	var conflicts = [];
@@ -548,6 +517,5 @@ CruParser.prototype.exportToICS = function (startDateStr, endDateStr) {
 	
 	return ics += 'END:VCALENDAR\r\n';
 }
-
 
 module.exports = CruParser;
