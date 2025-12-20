@@ -2,6 +2,16 @@
 
 Outil de gestion et de suivi d'occupation des salles de cours utilisant l'emploi du temps au format CRU avec génération d'iCalendar pour les utilisateurs.
 
+
+## Objectifs du projet
+
+- Vérifier la validité de fichiers CRU
+- Analyser l’occupation des salles de cours
+- Identifier les conflits et chevauchements
+- Exporter les données vers des formats exploitables (iCalendar, SVG)
+- Fournir des indicateurs d’usage des salles (sous-utilisation / sur-utilisation)
+
+Ce projet a été réalisé dans le cadre du module **GL02**.
 ## Pour commencer
 
 ### Pré-requis : installation de Node.js
@@ -94,6 +104,12 @@ Vérifie les chevauchements de salles dans les données
 - Alec BASSET _alias_ [@Eylexander](https://github.com/Eylexander) joignable via alec.basset@utt.fr
 - Lancelot ROGER _alias_ [@39soup](https://github.com/39soup) joignable via lancelot.roger@utt.fr
 - Antoine NERET _alias_ [@AntoineNeret](https://github.com/AntoineNeret) joignable via antoine.neret@utt.fr
+
+## Révision et maintenance
+
+- Jérémie RICHARD _alias_ [@RJ-45-1](https://github.com/RJ-45-1) joignable jeremie.richard@utt.fr  
+- Gabin CEYRAS _alias_ [@gabincrs](https://github.com/gabincrs)  joignable gabin.ceyras@utt.fr  
+- Gurvan CABIOCH _alias_ [@GurvanCab](https://github.com/GurvanCab)  joignable gurvan.cabioch@utt.fr  
 
 ## Licence
 
