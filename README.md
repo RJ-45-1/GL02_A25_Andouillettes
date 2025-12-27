@@ -12,6 +12,7 @@ Outil de gestion et de suivi d'occupation des salles de cours utilisant l'emploi
 - Fournir des indicateurs d’usage des salles (sous-utilisation / sur-utilisation)
 
 Ce projet a été réalisé dans le cadre du module **GL02**.
+
 ## Pour commencer
 
 ### Pré-requis : installation de Node.js
