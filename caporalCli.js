@@ -652,101 +652,126 @@ cli
 	})
 
 
-	// room-usage
-	.command('room-usage', 'Analyze room usage: identify under and over-utilized rooms')
+		// room-usage
+	.command('room-usage', 'Analyze room usage: identify under, over and normally utilized rooms')
 	.argument('<path>', 'The Cru file or directory to analyze')
 	.option('-lt, --lowThreshold <lowThreshold>', 'Occupancy rate threshold for under-utilization (%)', { validator: cli.NUMBER, default: 30 })
 	.option('-ht, --highThreshold <highThreshold>', 'Occupancy rate threshold for over-utilization (%)', { validator: cli.NUMBER, default: 80 })
 	.action(({ args, options, logger }) => {
-		const { path } = args;
-		const lowThreshold = options.lowThreshold;
-		const highThreshold = options.highThreshold;
-
-		fs.stat(path, (err, stats) => {
-			if (err) {
-				return logger.warn(err);
-			}
-
-			const files = stats.isDirectory() ? getAllCruFiles(path) : [path];
-
-			if (files.length === 0) {
-				logger.warn('No .cru files found in the folder');
-				return;
-			}
-
-			const masterAnalyzer = new CruParser();
-
-			let filesProcessed = 0;
-
-			files.forEach(file => {
-				fs.readFile(file, 'utf8', (err, data) => {
-					if (err) {
-						logger.warn(`Error reading ${file}: ${err}`);
-						filesProcessed++;
-						return;
-					}
-
-					const analyzer = new CruParser();
-					analyzer.parse(data);
-
-					if (analyzer.errorCount === 0) {
-						masterAnalyzer.parsedCourse = masterAnalyzer.parsedCourse.concat(analyzer.parsedCourse);
-					} else {
-						logger.warn(`${file} contains ${analyzer.errorCount} error(s)`);
-					}
-
-					filesProcessed++;
-
-					if (filesProcessed === files.length) {
-						if (masterAnalyzer.parsedCourse.length > 0) {
-							const occupancyData = masterAnalyzer.getOccupancyStats();
-
-							const underUtilized = occupancyData.filter(room => parseFloat(room.occupancyRate) < lowThreshold);
-							const overUtilized = occupancyData.filter(room => parseFloat(room.occupancyRate) > highThreshold);
-							
-							logger.info(`Salles sous-utilisées (< ${lowThreshold}%): ${underUtilized.length} salle(s)`.yellow);
-
-							if (underUtilized.length > 0) {
-								underUtilized.sort((a, b) => parseFloat(a.occupancyRate) - parseFloat(b.occupancyRate));
-								console.table(underUtilized.map(room => ({
-									'Salle': room.room,
-									'Taux (%)': parseFloat(room.occupancyRate).toFixed(2),
-									'Capacité': room.maxCapacity,
-									'Créneaux': room.totalSlots
-								})));
-							} else {
-								logger.info('Aucune salle sous-utilisée'.green);
-							}
-
-							logger.info(`Salles surchargées (> ${highThreshold}%): ${overUtilized.length} salle(s)`.yellow);
-
-							if (overUtilized.length > 0) {
-								overUtilized.sort((a, b) => parseFloat(b.occupancyRate) - parseFloat(a.occupancyRate));
-								console.table(overUtilized.map(room => ({
-									'Salle': room.room,
-									'Taux (%)': parseFloat(room.occupancyRate).toFixed(2),
-									'Capacité': room.maxCapacity,
-									'Créneaux': room.totalSlots
-								})));
-							} else {
-								logger.info('Aucune salle surchargée'.green);
-							}
-
-							logger.info(`Rapport :`.green);
-
-							const totalRooms = occupancyData.length;
-							const avgOccupancy = (occupancyData.reduce((sum, room) => sum + parseFloat(room.occupancyRate), 0) / totalRooms).toFixed(2);
-
-							logger.info(`Total de salles analysées: ${totalRooms}`.cyan);
-							logger.info(`Taux d'occupation moyen: ${avgOccupancy}%`.cyan);
-
-						} else if (masterAnalyzer.parsedCourse.length === 0) {
-							logger.warn('No valid courses found to analyze');
-						}
-					}
-				});
-			});
-		});
-	})
+	    const { path } = args;
+	    const lowThreshold = options.lowThreshold;
+	    const highThreshold = options.highThreshold;
+	
+	    fs.stat(path, (err, stats) => {
+	        if (err) {
+	            return logger.warn(err);
+	        }
+		
+	        const files = stats.isDirectory() ? getAllCruFiles(path) : [path];
+		
+	        if (files.length === 0) {
+	            logger.warn('No .cru files found in the folder');
+	            return;
+	        }
+		
+	        const masterAnalyzer = new CruParser();
+	        let filesProcessed = 0;
+		
+	        files.forEach(file => {
+	            fs.readFile(file, 'utf8', (err, data) => {
+	                if (err) {
+	                    logger.warn(`Error reading ${file}: ${err}`);
+	                    filesProcessed++;
+	                    return;
+	                }
+				
+	                const analyzer = new CruParser();
+	                analyzer.parse(data);
+				
+	                if (analyzer.errorCount === 0) {
+	                    masterAnalyzer.parsedCourse = masterAnalyzer.parsedCourse.concat(analyzer.parsedCourse);
+	                } else {
+	                    logger.warn(`${file} contains ${analyzer.errorCount} error(s)`);
+	                }
+				
+	                filesProcessed++;
+				
+	                if (filesProcessed === files.length) {
+	                    if (masterAnalyzer.parsedCourse.length > 0) {
+						
+	                        const occupancyData = masterAnalyzer.getOccupancyStats();
+						
+	                        // --- Catégorisation ---
+	                        const underUtilized = occupancyData.filter(room => parseFloat(room.occupancyRate) < lowThreshold);
+	                        const overUtilized = occupancyData.filter(room => parseFloat(room.occupancyRate) > highThreshold);
+	                        const normalUsage = occupancyData.filter(room => {
+	                            const rate = parseFloat(room.occupancyRate);
+	                            return rate >= lowThreshold && rate <= highThreshold;
+	                        });
+						
+	                        // --- Sous-utilisées ---
+	                        logger.info(`Salles sous-utilisées (< ${lowThreshold}%): ${underUtilized.length} salle(s)`.yellow);
+						
+	                        if (underUtilized.length > 0) {
+	                            underUtilized.sort((a, b) => parseFloat(a.occupancyRate) - parseFloat(b.occupancyRate));
+	                            console.table(underUtilized.map(room => ({
+	                                'Salle': room.room,
+	                                'Taux (%)': parseFloat(room.occupancyRate).toFixed(2),
+	                                'Capacité': room.maxCapacity,
+	                                'Créneaux': room.totalSlots
+	                            })));
+	                        } else {
+	                            logger.info('Aucune salle sous-utilisée'.green);
+	                        }
+						
+	                        // --- Surchargées ---
+	                        logger.info(`Salles surchargées (> ${highThreshold}%): ${overUtilized.length} salle(s)`.yellow);
+						
+	                        if (overUtilized.length > 0) {
+	                            overUtilized.sort((a, b) => parseFloat(b.occupancyRate) - parseFloat(a.occupancyRate));
+	                            console.table(overUtilized.map(room => ({
+	                                'Salle': room.room,
+	                                'Taux (%)': parseFloat(room.occupancyRate).toFixed(2),
+	                                'Capacité': room.maxCapacity,
+	                                'Créneaux': room.totalSlots
+	                            })));
+	                        } else {
+	                            logger.info('Aucune salle surchargée'.green);
+	                        }
+						
+	                        // --- Utilisation normale ---
+	                        logger.info(`Salles normalement utilisées (entre ${lowThreshold}% et ${highThreshold}%): ${normalUsage.length} salle(s)`.yellow);
+						
+	                        if (normalUsage.length > 0) {
+	                            normalUsage.sort((a, b) => parseFloat(a.occupancyRate) - parseFloat(b.occupancyRate));
+	                            console.table(normalUsage.map(room => ({
+	                                'Salle': room.room,
+	                                'Taux (%)': parseFloat(room.occupancyRate).toFixed(2),
+	                                'Capacité': room.maxCapacity,
+	                                'Créneaux': room.totalSlots
+	                            })));
+	                        } else {
+	                            logger.info('Aucune salle avec une utilisation normale'.green);
+	                        }
+						
+	                        // --- Rapport global ---
+	                        const totalRooms = occupancyData.length;
+	                        const avgOccupancy = (
+	                            occupancyData.reduce((sum, room) => sum + parseFloat(room.occupancyRate), 0) / totalRooms
+	                        ).toFixed(2);
+						
+	                        logger.info(`Rapport :`.green);
+	                        logger.info(`Total de salles analysées: ${totalRooms}`.cyan);
+	                        logger.info(`Taux d'occupation moyen: ${avgOccupancy}%`.cyan);
+						
+	                    } else {
+	                        logger.warn('No valid courses found to analyze');
+	                    }
+	                }
+	            });
+	        });
+	    });
+	});
 
 cli.run(process.argv.slice(2));
+
