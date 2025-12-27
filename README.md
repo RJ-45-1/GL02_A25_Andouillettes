@@ -56,7 +56,7 @@ node caporalCli search-rooms <chemin/vers/un/fichier.cru> <nom d'un cours>
 Cherche les salles utilisées par certains cours
 
 ```
-node caporalCli export <chemin/vers/un/fichier.cru> <fichier.ics> -sd|--startDate -ed|--endDate
+node caporalCli.js export <chemin/vers/un/fichier.cru> <fichier.ics> --startDate YYYY-MM-DD --endDate YYYY-MM-DD
 ```
 Exporte les fichiers.cru en fichier.ics au format iCalendar
 

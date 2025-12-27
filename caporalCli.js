@@ -138,68 +138,89 @@ cli
 		});
 	})
 
-
 	// export
 	.command('export', 'Export parsed Cru files to iCalendar .ics format')
 	.argument('<path>', 'The Cru file or directory to export')
 	.argument('<output>', 'The output .ics file')
-	.option('-sd, --startDate <startDate>', 'The start date of the semester in YYYY-MM-DD format', { default: '2025-12-08' })
-	.option('-ed, --endDate <endDate>', 'The end date of the semester in YYYY-MM-DD format', { default: '2025-12-13' })
+	.option('-sd, --startDate <startDate>', 'The start date of the semester in YYYY-MM-DD format')
+	.option('-ed, --endDate <endDate>', 'The end date of the semester in YYYY-MM-DD format')
 	.action(({ args, options, logger }) => {
-
-		const { path, output } = args;
-
-		fs.stat(path, (err, stats) => {
-			if (err) {
-				return logger.warn(err);
-			}
-
-			const files = stats.isDirectory() ? getAllCruFiles(path) : [path];
-
-			if (files.length === 0) {
-				logger.warn('No .cru files found in the folder');
-				return;
-			}
-
-			const masterAnalyzer = new CruParser();
-
-			var filesProcessed = 0;
-
-			files.forEach(file => {
-				fs.readFile(file, 'utf8', (err, data) => {
-					if (err) {
-						logger.warn(`Error reading ${file}: ${err}`);
-						filesProcessed++;
-						return;
-					}
-
-					var analyzer = new CruParser();
-					analyzer.parse(data);
-
-					if (analyzer.errorCount === 0) {
-						masterAnalyzer.parsedCourse = masterAnalyzer.parsedCourse.concat(analyzer.parsedCourse);
-					} else {
-						logger.warn(`${file} contains ${analyzer.errorCount} error(s)`);
-					}
-
-					filesProcessed++;
-
-					if (filesProcessed === files.length) {
-						if (masterAnalyzer.parsedCourse.length > 0) {
-							const icsData = masterAnalyzer.exportToICS(options.startDate, options.endDate);
-							fs.writeFile(args.output, icsData, (err) => {
-								if (err) {
-									return logger.warn(err);
-								}
-								logger.info(`Exported ${masterAnalyzer.parsedCourse.length} courses to ${args.output}`.green);
-							});
-						} else if (masterAnalyzer.parsedCourse.length === 0) {
-							logger.warn('No valid courses found to export');
-						}
-					}
-				});
-			});
-		});
+	
+	    const { path, output } = args;
+	
+	    // --- Vérification des dates obligatoires ---
+	    if (!options.startDate || !options.endDate) {
+	        logger.error("Erreur : Les options --startDate et --endDate sont obligatoires.");
+	        logger.error("Exemple : export ./data output.ics --startDate 2025-09-01 --endDate 2025-12-20");
+	        return;
+	    }
+	
+	    // --- Vérification du format YYYY-MM-DD ---
+	    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+	
+	    if (!dateRegex.test(options.startDate)) {
+	        logger.error("Format invalide pour --startDate. Format attendu : YYYY-MM-DD");
+	        return;
+	    }
+	
+	    if (!dateRegex.test(options.endDate)) {
+	        logger.error("Format invalide pour --endDate. Format attendu : YYYY-MM-DD");
+	        return;
+	    }
+	
+	    fs.stat(path, (err, stats) => {
+	        if (err) {
+	            return logger.warn(err);
+	        }
+		
+	        const files = stats.isDirectory() ? getAllCruFiles(path) : [path];
+		
+	        if (files.length === 0) {
+	            logger.warn('No .cru files found in the folder');
+	            return;
+	        }
+		
+	        const masterAnalyzer = new CruParser();
+	        let filesProcessed = 0;
+		
+	        files.forEach(file => {
+	            fs.readFile(file, 'utf8', (err, data) => {
+	                if (err) {
+	                    logger.warn(`Error reading ${file}: ${err}`);
+	                    filesProcessed++;
+	                    return;
+	                }
+				
+	                const analyzer = new CruParser();
+	                analyzer.parse(data);
+				
+	                if (analyzer.errorCount === 0) {
+	                    masterAnalyzer.parsedCourse = masterAnalyzer.parsedCourse.concat(analyzer.parsedCourse);
+	                } else {
+	                    logger.warn(`${file} contains ${analyzer.errorCount} error(s)`);
+	                }
+				
+	                filesProcessed++;
+				
+	                if (filesProcessed === files.length) {
+	                    if (masterAnalyzer.parsedCourse.length > 0) {
+						
+	                        const icsData = masterAnalyzer.exportToICS(options.startDate, options.endDate);
+						
+	                        fs.writeFile(output, icsData, (err) => {
+	                            if (err) {
+	                                return logger.warn(err);
+	                            }
+	                            logger.info(`Exported ${masterAnalyzer.parsedCourse.length} courses to ${output}`.green);
+	                        });
+						
+	                    } else {
+	                        logger.warn('No valid courses found to export');
+	                    }
+	                }
+	            });
+	        });
+	    });
 	})
 
 
