@@ -623,7 +623,7 @@ cli
 
 
 	// verify
-	.command('verify', 'Check for room conflicts in the schedule')
+.command('verify', 'Check for room conflicts in the schedule')
 	.argument('<path>', 'The Cru file or directory to verify')
 	.action(({ args, options, logger }) => {
 		const path = args.path;
@@ -641,7 +641,6 @@ cli
 			}
 
 			const masterAnalyzer = new CruParser();
-
 			let filesProcessed = 0;
 
 			files.forEach(file => {
@@ -670,15 +669,30 @@ cli
 							if (conflicts.length === 0) {
 								logger.info('Aucun chevauchement détecté'.green);
 							} else {
-								logger.warn(`${conflicts.length} conflit(s) détecté(s):`.yellow);
+								logger.warn(`${conflicts.length} conflit(s) détecté(s) :`.yellow);
+
 								conflicts.forEach((conflict, index) => {
-									logger.info(`\nConflit ${index + 1}:`.red);
-									logger.info(`  Salle: ${conflict.room}`.cyan);
-									logger.info(`  Cours 1: ${conflict.course1} (${conflict.slot1.type}): ${conflict.slot1.start} - ${conflict.slot1.end}`.yellow);
-									logger.info(`  Cours 2: ${conflict.course2} (${conflict.slot2.type}): ${conflict.slot2.start} - ${conflict.slot2.end}`.yellow);
+									const room = conflict.room;
+									const course1 = conflict.course1;
+									const course2 = conflict.course2;
+									const slot1 = conflict.slot1;
+									const slot2 = conflict.slot2;
+
+									// Message hyper explicite pour l’utilisateur
+									logger.error(
+										`\nConflit ${index + 1} : chevauchement détecté en salle "${room}" ` +
+										`entre le cours "${course1}" (${slot1.type}) [${slot1.start} - ${slot1.end}] ` +
+										`et le cours "${course2}" (${slot2.type}) [${slot2.start} - ${slot2.end}].`
+											.red
+									);
+
+									logger.info(
+										`Raison : ces deux créneaux se recouvrent partiellement sur la même salle et le même créneau temporel.`
+											.yellow
+									);
 								});
 							}
-						} else if (masterAnalyzer.parsedCourse.length === 0) {
+						} else {
 							logger.warn('No valid courses found to verify');
 						}
 					}
