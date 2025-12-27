@@ -53,30 +53,32 @@ cli
 
 			let validCount = 0;
 			let errorCount = 0;
+			let processedFiles = 0;
 
 			files.forEach(file => {
 				fs.readFile(file, 'utf8', function (err, data) {
 					if (err) {
-						return logger.warn(err);
-					}
-
-					var analyzer = new CruParser(options.showTokenize, options.showSymbols);
-					analyzer.parse(data);
-
-					if (analyzer.errorCount === 0) {
-						logger.info(`${file} is a valid cru file`.green);
-						validCount++;
+						logger.warn(err);
 					} else {
-						logger.info(`${file} contains ${analyzer.errorCount} error(s)`.red);
-						errorCount++;
+						var analyzer = new CruParser(options.showTokenize, options.showSymbols);
+						analyzer.parse(data);
+
+						if (analyzer.errorCount === 0) {
+							logger.info(`${file} is a valid cru file`.green);
+							validCount++;
+						} else {
+							logger.info(`${file} contains ${analyzer.errorCount} error(s)`.red);
+							errorCount++;
+						}
+						logger.debug(analyzer.parsedCourse);
 					}
-					logger.debug(analyzer.parsedCourse);
+
+					processedFiles++;
+					if (processedFiles === files.length) {
+						logger.info(`\nResults: ${validCount} valid, ${errorCount} with errors`.cyan);
+					}
 				});
 			});
-
-			setTimeout(() => {
-				logger.info(`\nResults: ${validCount} valid, ${errorCount} with errors`.cyan);
-			}, 100);
 		});
 	})
 
