@@ -103,43 +103,65 @@ cli
 	// search for rooms used by a specfic course
 	.command('search-rooms', 'Search for the rooms used for a course\' name')
 	.argument('<path>', 'The Cru file or directory to search')
-	.argument('<needle>', 'The text to look for in courses name\' names')
-	.action(({ args, options, logger }) => {
-		const { path, needle } = args;
+	.argument('<needle...>', 'The text to look for in course names')
 
-		fs.stat(path, (err, stats) => {
-			if (err) {
-				return logger.warn(err);
-			}
+.action(({ args, options, logger }) => {
 
-			const files = stats.isDirectory() ? getAllCruFiles(path) : [path];
+	// needle est désormais un tableau (variadique)
+	const { path, needle } = args;
 
-			if (files.length === 0) {
-				logger.warn('No .cru files found in the folder');
-				return;
-			}
+	// --- Détection guillemets manquants ---
+	if (Array.isArray(needle) && needle.length > 1) {
+		logger.error(
+			`Erreur : l’argument du nom de cours contient plusieurs mots.\n` +
+			`Il semble que des guillemets manquent autour de la valeur.\n\n` +
+			`Exemple correct :\n` +
+			`  search-rooms ./data "Nom du cours"`
+		);
+		return;
+	}
 
-			files.forEach(file => {
-				fs.readFile(file, 'utf8', (err, data) => {
-					if (err) {
-						return logger.warn(err);
+	// On récupère la vraie valeur
+	const searchValue = Array.isArray(needle) ? needle[0] : needle;
+
+	fs.stat(path, (err, stats) => {
+		if (err) {
+			return logger.warn(err);
+		}
+
+		const files = stats.isDirectory() ? getAllCruFiles(path) : [path];
+
+		if (files.length === 0) {
+			logger.warn('No .cru files found in the folder');
+			return;
+		}
+
+		files.forEach(file => {
+			fs.readFile(file, 'utf8', (err, data) => {
+				if (err) {
+					return logger.warn(err);
+				}
+
+				var analyzer = new CruParser();
+				analyzer.parse(data);
+
+				if (analyzer.errorCount === 0) {
+					const matches = analyzer.parsedCourse.filter(course =>
+						course.name.includes(searchValue)
+					);
+
+					for (const match of matches) {
+						var rooms = match.getRooms().filter((v, i, self) => self.indexOf(v) === i);
+						logger.info(`Course: ${match.name}`.green);
+						logger.info(`Rooms: ${rooms.join(', ')} \n`.cyan);
 					}
-
-					var analyzer = new CruParser();
-					analyzer.parse(data);
-
-					if (analyzer.errorCount === 0) {
-						const matches = analyzer.parsedCourse.filter(course => course.name.includes(needle));
-						for (const match of matches) {
-							var rooms = match.getRooms().filter((value, index, self) => self.indexOf(value) === index);
-							logger.info(`Course: ${match.name}`.green);
-							logger.info(`Rooms: ${rooms.join(', ')} \n`.cyan);
-						}
-					}
-				});
+				}
 			});
 		});
-	})
+	});
+})
+
+
 
 	// export
 	.command('export', 'Export parsed Cru files to iCalendar .ics format')
@@ -360,10 +382,24 @@ cli
 	// get-room-capacity
 	.command('get-room-capacity', 'Display room max capacity')
 	.argument('<path>', 'The Cru file or directory to search')
-	.argument('<needle>', 'The text to look for in rooms names')
+	.argument('<needle...>', 'The text to look for in rooms names')
+
 	.action(({ args, options, logger }) => {
 
 		const { path, needle } = args;
+
+		// --- Vérification guillemets manquants pour le nom de salle ---
+		if (Array.isArray(needle) && needle.length > 1) {
+			logger.error(
+				`Erreur : le nom de la salle contient plusieurs mots.\n` +
+				`Il semble que des guillemets manquent autour de la valeur.\n\n` +
+				`Exemple correct :\n` +
+				`  get-room-capacity ./data "Amphi A"`
+			);
+			return;
+		}
+
+		const roomNeedle = Array.isArray(needle) ? needle[0] : needle;
 
 		fs.stat(path, (err, stats) => {
 			if (err) {
@@ -403,7 +439,7 @@ cli
 					if (filesProcessed === files.length) {
 						if (masterAnalyzer.parsedCourse.length > 0) {
 							const allRooms = masterAnalyzer.getAllRooms().filter(room => room !== null);
-							const matchingRooms = allRooms.filter(room => room.includes(needle));
+							const matchingRooms = allRooms.filter(room => room.includes(roomNeedle));
 
 							matchingRooms.forEach(room => {
 								const capacity = masterAnalyzer.getRoomMaxCapacity(room);
@@ -418,6 +454,7 @@ cli
 			});
 		});
 	})
+
 
 
 	// Sort rooms by capacity
