@@ -58,7 +58,7 @@ CruParser.prototype.parseSlotLine = function (line) {
 	var response = [];
 
 	// Pattern: Index,Type,P=Capacite,H=Jour HeureDeb-HeureFin,FSousGrp,S=Salle//
-	var basePattern = /^(\d+),([A-Za-z0-9]{2,3}),P=(\d{1,3}),H=([A-Za-z]{1,2})\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2}),F(\d+),S=([A-Za-z0-9]*)\/\/\s*$/;
+	var basePattern = /^(\d+),([A-Za-z0-9]{2,3}),P=(\d{1,3}),H=([A-Za-z]{1,2})\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2}),F(\d+),S=([A-Za-z0-9._-]*)\/\/\s*$/;
 	var baseMatch = line.match(basePattern);
 	
 	if (baseMatch) {
@@ -78,10 +78,10 @@ CruParser.prototype.parseSlotLine = function (line) {
 		}
 	}
 	
-	var firstSessionPattern = /H=([A-Za-z]{1,2})\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2}),F([A-Za-z0-9]+),S=([A-Za-z0-9]*)(?:\/|$)/;
+	var firstSessionPattern = /H=([A-Za-z]{1,2})\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2}),F([A-Za-z0-9]+),S=([A-Za-z0-9._-]*)(?:\/|$)/;
 	var firstMatch = line.match(firstSessionPattern);
 
-	var hasLinkedSessionsSeparator = firstMatch && /,S=[A-Za-z0-9]*\/[^/]/.test(line);
+	var hasLinkedSessionsSeparator = firstMatch && /,S=[A-Za-z0-9._-]*\/[^/]/.test(line);
 	
 	if (firstMatch && hasLinkedSessionsSeparator) {
 		var addPattern = /^(\d+),([A-Za-z0-9]{2,3}),P=(\d{1,3})/;
@@ -111,7 +111,7 @@ CruParser.prototype.parseSlotLine = function (line) {
 
 	// Extract additional linked sessions (after /)
 	// Pattern: /Day HH:MM-HH:MM,F<digit>,S=Room
-	var linkedPattern = /\/([A-Za-z]{1,2})\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2}),F([A-Za-z0-9]+),S=([A-Za-z0-9]*)(?:\/|$)/g;
+	var linkedPattern = /\/([A-Za-z]{1,2})\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2}),F([A-Za-z0-9]+),S=([A-Za-z0-9._-]*)(?:\/|$)/g;
 	var match;
 
 	while ((match = linkedPattern.exec(line)) !== null) {
