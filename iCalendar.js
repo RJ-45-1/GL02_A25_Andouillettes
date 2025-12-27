@@ -47,7 +47,7 @@ function formatICSDateTime(date, time) {
 	var minutes = String(timeParts[1]).padStart(2, '0');
 	var seconds = '00';
 	
-	return year + month + day + 'T' + hours + minutes + seconds + 'Z';
+	return year + month + day + 'T' + hours + minutes + seconds;
 }
 
 // Escape special characters in iCalendar text fields
