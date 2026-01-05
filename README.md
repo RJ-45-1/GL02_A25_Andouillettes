@@ -112,6 +112,9 @@ Vérifie les chevauchements de salles dans les données
 - Gabin CEYRAS _alias_ [@gabincrs](https://github.com/gabincrs)  joignable gabin.ceyras@utt.fr  
 - Gurvan CABIOCH _alias_ [@GurvanCab](https://github.com/GurvanCab)  joignable gurvan.cabioch@utt.fr  
 
+Liens des tests et resultats:
+https://docs.google.com/document/d/16qWIdc_eXaKinCAxFfeeMQRFy1Ly__9ManZ8U0mywZ8/edit?usp=sharing
+
 ## Licence
 
 Ce projet est sous licence ``MIT License`` - voir sur [choosealicense.com](https://choosealicense.com/licenses/mit/)
