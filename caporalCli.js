@@ -250,7 +250,7 @@ cli
 
 
 	// visualize-occupancy
-	.command('stats', 'Visualize room occupancy rates as SVG')
+	.command('visualize-occupancy', 'Visualize room occupancy rates as SVG')
 	.argument('<path>', 'The Cru file or directory to analyze')
 	.argument('<output>', 'The output .svg file')
 	.action(({ args, options, logger }) => {
@@ -346,7 +346,7 @@ cli
 
 								view.runAsync().then(() => view.toSVG()).then(svg => {
 									// Correction Test 9 : s'assurer que le dossier de sortie existe
-									const outputDir = pathLib.dirname(args.output);
+									const outputDir = pathLib.dirname(output);
 
 									if (!fs.existsSync(outputDir)) {
 										fs.mkdirSync(outputDir, { recursive: true });
@@ -354,11 +354,11 @@ cli
 									}
 
 									// Écriture du SVG une fois le dossier garanti existant
-									fs.writeFile(args.output, svg, (err) => {
+									fs.writeFile(output, svg, (err) => {
 										if (err) {
 											return logger.warn(err);
 										}
-										logger.info(`Room occupancy visualization exported to ${args.output}`.green);
+										logger.info(`Room occupancy visualization exported to ${output}`.green);
 										logger.info(`Occupancy data: ${occupancyData.length} rooms analyzed`.cyan);
 									});
 								}).catch(err => {
